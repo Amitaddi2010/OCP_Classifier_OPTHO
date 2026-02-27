@@ -1,4 +1,4 @@
-tensorflow==2.20.0
+tensorflow==2.19.0
 numpy
 pandas
 matplotlib
@@ -8,3 +8,4 @@ Pillow
 streamlit
 opencv-python
 flask
+gunicorn

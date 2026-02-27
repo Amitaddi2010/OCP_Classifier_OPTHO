@@ -1,5 +1,5 @@
 Dataset/
-models/
+models/old/
 results/
 __pycache__/
 *.pyc
