@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eye Classifier</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { color: #333; }
+        #preview { max-width: 400px; margin: 20px 0; }
+        .result { margin: 20px 0; padding: 15px; background: #f0f0f0; border-radius: 5px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        select { padding: 8px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>👁️ Eye Image Classifier</h1>
+    <p>OCP vs Normal Eyes</p>
+    
+    <select id="model">
+        <option value="CustomCNN">CustomCNN</option>
+        <option value="VGG16">VGG16</option>
+        <option value="ResNet50">ResNet50</option>
+        <option value="MobileNetV2" selected>MobileNetV2</option>
+    </select>
+    
+    <br><br>
+    <input type="file" id="upload" accept="image/*">
+    <br><br>
+    <img id="preview" style="display:none;">
+    <br>
+    <button onclick="predict()" id="predictBtn" style="display:none;">Predict</button>
+    
+    <div id="result" class="result" style="display:none;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+    <script>
+        let model;
+        let image;
+        
+        document.getElementById('upload').onchange = function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.getElementById('preview');
+                img.src = event.target.result;
+                img.style.display = 'block';
+                document.getElementById('predictBtn').style.display = 'inline-block';
+                image = img;
+            };
+            reader.readAsDataURL(file);
+        };
+        
+        async function predict() {
+            const modelName = document.getElementById('model').value;
+            document.getElementById('result').innerHTML = 'Loading model...';
+            document.getElementById('result').style.display = 'block';
+            
+            try {
+                model = await tf.loadLayersModel(`models/${modelName}/model.json`);
+                
+                const tensor = tf.browser.fromPixels(image)
+                    .resizeNearestNeighbor([256, 256])
+                    .toFloat()
+                    .div(255.0)
+                    .expandDims();
+                
+                const prediction = await model.predict(tensor).data();
+                const classes = ['A. OCP', 'C. Normal Eyes'];
+                const maxIdx = prediction[0] > prediction[1] ? 0 : 1;
+                const confidence = (prediction[maxIdx] * 100).toFixed(1);
+                
+                document.getElementById('result').innerHTML = `
+                    <h3>Prediction: ${classes[maxIdx]}</h3>
+                    <p>Confidence: ${confidence}%</p>
+                    <p>A. OCP: ${(prediction[0] * 100).toFixed(1)}%</p>
+                    <p>C. Normal Eyes: ${(prediction[1] * 100).toFixed(1)}%</p>
+                `;
+            } catch(e) {
+                document.getElementById('result').innerHTML = `Error: ${e.message}<br>Convert models to TensorFlow.js format first.`;
+            }
+        }
+    </script>
+</body>
+</html>
