@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OphthoAI — OCP Eye Classifier</title>
+    <meta name="description" content="Professional AI-powered ophthalmology image classifier for OCP vs Normal Eyes using deep learning with Grad-CAM explainability.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Animated Background Orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-icon">👁️</span>
+            <span class="nav-title">OphthoAI</span>
+        </div>
+        <div class="nav-links">
+            <a href="#classifier" class="nav-link active">Classifier</a>
+            <a href="#models" class="nav-link">Models</a>
+            <a href="#about" class="nav-link">About</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero" id="classifier">
+        <div class="hero-content">
+            <div class="hero-badge">AI-POWERED DIAGNOSTICS</div>
+            <h1 class="hero-title">
+                Ophthalmology<br>
+                <span class="gradient-text">Image Classifier</span>
+            </h1>
+            <p class="hero-subtitle">
+                Binary classification of eye images — <strong>OCP vs Normal Eyes</strong> — powered by 
+                deep learning with Grad-CAM explainability and multi-model ensemble predictions.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <span class="stat-value">4</span>
+                    <span class="stat-label">AI Models</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">95%+</span>
+                    <span class="stat-label">Accuracy</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">XAI</span>
+                    <span class="stat-label">Grad-CAM</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Classifier Section -->
+    <main class="main-content">
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <div class="section-header">
+                <h2 class="section-title">Upload & Classify</h2>
+                <p class="section-desc">Drag & drop or click to upload an eye image for analysis</p>
+            </div>
+
+            <div class="upload-container">
+                <!-- Drop Zone -->
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-content" id="dropZoneContent">
+                        <div class="drop-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <p class="drop-text">Drop your eye image here</p>
+                        <p class="drop-subtext">or click to browse • JPG, PNG, TIF supported</p>
+                    </div>
+                    <img id="imagePreview" class="image-preview" style="display:none;" alt="Uploaded eye image">
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+
+                <!-- Controls -->
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label class="control-label">Select Model</label>
+                        <div class="custom-select" id="modelSelect">
+                            <div class="select-trigger" id="selectTrigger">
+                                <span id="selectedModel">MobileNetV2</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </div>
+                            <div class="select-options" id="selectOptions">
+                                <div class="select-option active" data-value="MobileNetV2">
+                                    <span class="option-name">MobileNetV2</span>
+                                    <span class="option-badge">Recommended</span>
+                                </div>
+                                <div class="select-option" data-value="VGG16">
+                                    <span class="option-name">VGG16</span>
+                                    <span class="option-badge transfer">Transfer</span>
+                                </div>
+                                <div class="select-option" data-value="ResNet50">
+                                    <span class="option-name">ResNet50</span>
+                                    <span class="option-badge transfer">Transfer</span>
+                                </div>
+                                <div class="select-option" data-value="CustomCNN">
+                                    <span class="option-name">CustomCNN</span>
+                                    <span class="option-badge custom">Custom</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Compare All Models</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="compareToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <button class="predict-btn" id="predictBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <span>Analyze Image</span>
+                    </button>
+
+                    <button class="clear-btn" id="clearBtn" style="display:none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        <span>Clear</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <p class="loading-text">Analyzing image with AI...</p>
+            <p class="loading-subtext">Running deep learning inference & generating Grad-CAM heatmap</p>
+        </div>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display:none;">
+            <div class="section-header">
+                <h2 class="section-title">Analysis Results</h2>
+                <p class="section-desc" id="resultsDesc">Prediction results with explainability</p>
+            </div>
+
+            <!-- Single Model Result -->
+            <div class="single-result" id="singleResult" style="display:none;">
+                <div class="result-grid">
+                    <div class="result-card prediction-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Prediction</h3>
+                            <span class="model-tag" id="resultModelTag"></span>
+                        </div>
+                        <div class="prediction-main">
+                            <div class="prediction-class" id="resultClass"></div>
+                            <div class="confidence-ring" id="confidenceRing">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                                    <circle class="ring-fill" cx="60" cy="60" r="52" id="ringFill"/>
+                                </svg>
+                                <span class="confidence-value" id="confidenceValue"></span>
+                            </div>
+                        </div>
+                        <div class="prob-bars" id="probBars"></div>
+                    </div>
+
+                    <div class="result-card heatmap-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Grad-CAM Explanation</h3>
+                            <span class="xai-badge">XAI</span>
+                        </div>
+                        <div class="heatmap-container">
+                            <div class="heatmap-images">
+                                <div class="heatmap-item">
+                                    <img id="originalImg" alt="Original image">
+                                    <span class="heatmap-label">Original</span>
+                                </div>
+                                <div class="heatmap-item">
+                                    <img id="heatmapImg" alt="Grad-CAM heatmap overlay">
+                                    <span class="heatmap-label">Grad-CAM Overlay</span>
+                                </div>
+                            </div>
+                            <p class="heatmap-desc">
+                                Grad-CAM highlights the regions the model focused on to make its prediction.
+                                Warmer colors (red/yellow) indicate higher importance.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare All Results -->
+            <div class="compare-results" id="compareResults" style="display:none;">
+                <!-- Ensemble Card -->
+                <div class="ensemble-card" id="ensembleCard">
+                    <div class="ensemble-icon">🎯</div>
+                    <div class="ensemble-info">
+                        <h3>Ensemble Prediction</h3>
+                        <div class="ensemble-class" id="ensembleClass"></div>
+                    </div>
+                    <div class="ensemble-confidence" id="ensembleConfidence"></div>
+                </div>
+
+                <!-- Model Cards Grid -->
+                <div class="model-cards-grid" id="modelCardsGrid"></div>
+            </div>
+        </section>
+
+        <!-- Models Info Section -->
+        <section class="models-section" id="models">
+            <div class="section-header">
+                <h2 class="section-title">Model Architecture</h2>
+                <p class="section-desc">4 deep learning models trained on ophthalmology images</p>
+            </div>
+            <div class="models-grid">
+                <div class="model-info-card">
+                    <div class="model-info-icon">🧠</div>
+                    <h3>CustomCNN</h3>
+                    <p>6-layer convolutional neural network built from scratch with progressive feature extraction</p>
+                    <div class="model-meta">
+                        <span class="meta-tag">Custom</span>
+                        <span class="meta-tag">85-90% acc</span>
+                    </div>
+                </div>
+                <div class="model-info-card">
+                    <div class="model-info-icon">🏗️</div>
+                    <h3>VGG16</h3>
+                    <p>Transfer learning from ImageNet with 16-layer architecture for robust feature recognition</p>
+                    <div class="model-meta">
+                        <span class="meta-tag">Transfer</span>
+                        <span class="meta-tag">92-97% acc</span>
+                    </div>
+                </div>
+                <div class="model-info-card">
+                    <div class="model-info-icon">⚡</div>
+                    <h3>ResNet50</h3>
+                    <p>50-layer deep residual network with skip connections for learning complex patterns</p>
+                    <div class="model-meta">
+                        <span class="meta-tag">Transfer</span>
+                        <span class="meta-tag">92-97% acc</span>
+                    </div>
+                </div>
+                <div class="model-info-card">
+                    <div class="model-info-icon">📱</div>
+                    <h3>MobileNetV2</h3>
+                    <p>Lightweight architecture optimized for speed with inverted residual blocks</p>
+                    <div class="model-meta">
+                        <span class="meta-tag">Transfer</span>
+                        <span class="meta-tag">92-97% acc</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="about-section" id="about">
+            <div class="section-header">
+                <h2 class="section-title">About This Project</h2>
+                <p class="section-desc">Pilot study for OCP classification using deep learning</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>🔬 Research Context</h3>
+                    <p>This is a pilot study investigating deep learning models for binary classification of ophthalmology images, specifically differentiating <strong>Ocular Cicatricial Pemphigoid (OCP)</strong> from <strong>Normal Eyes</strong>.</p>
+                </div>
+                <div class="about-card">
+                    <h3>🤖 Explainable AI</h3>
+                    <p>Every prediction includes a <strong>Grad-CAM heatmap</strong> that visualizes which regions of the eye image the model focused on, providing transparency and clinical interpretability.</p>
+                </div>
+                <div class="about-card">
+                    <h3>📊 Ensemble Approach</h3>
+                    <p>The "Compare All" mode aggregates predictions from all 4 models to produce a robust <strong>ensemble prediction</strong>, reducing individual model bias and improving reliability.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <span class="footer-brand">👁️ OphthoAI</span>
+            <span class="footer-text">Ophthalmology Image Classifier — Pilot Study</span>
+            <span class="footer-tech">Flask • TensorFlow • Grad-CAM</span>
+        </div>
+    </footer>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
