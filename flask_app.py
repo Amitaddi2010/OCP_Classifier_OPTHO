@@ -1,48 +1,76 @@
 """
-OphthoAI — Professional Flask Application
+OphthoAI -- Professional Flask Application
 OCP vs Normal Eyes Classifier with Grad-CAM Explainability
+Memory-optimized for cloud deployment (Render free tier)
 """
 
+import os
+import gc
 from flask import Flask, request, jsonify, render_template
-import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
 import base64
-import matplotlib.cm as cm
 
-# ── App Setup ──────────────────────────────────────────────
+# ---- App Setup ----
 app = Flask(__name__)
 IMG_SIZE = (256, 256)
 
-# ── Load Models ────────────────────────────────────────────
-models = {}
+# ---- Lazy Model Loading (memory-efficient) ----
+# Only load one model at a time to stay within 512MB RAM
 class_names = np.load('models/class_names.npy', allow_pickle=True)
 
-for name in ['CustomCNN', 'VGG16', 'ResNet50', 'MobileNetV2']:
-    try:
-        models[name] = tf.keras.models.load_model(f'models/{name}.keras')
-        print(f'[LOAD] {name} OK')
-    except Exception as e:
-        print(f'[LOAD] {name} FAIL - {e}')
+AVAILABLE_MODELS = []
+for name in ['MobileNetV2', 'CustomCNN', 'VGG16', 'ResNet50']:
+    if os.path.exists(f'models/{name}.keras'):
+        AVAILABLE_MODELS.append(name)
+
+print(f'[INIT] Available models: {AVAILABLE_MODELS}')
+
+_loaded_model = None
+_loaded_model_name = None
 
 
-def _warmup_model(model):
+def get_model(name):
+    """Load a model, unloading the previous one to save memory."""
+    global _loaded_model, _loaded_model_name
+    import tensorflow as tf
+
+    if _loaded_model_name == name and _loaded_model is not None:
+        return _loaded_model
+
+    # Unload previous model
+    if _loaded_model is not None:
+        del _loaded_model
+        _loaded_model = None
+        _loaded_model_name = None
+        gc.collect()
+        try:
+            from tensorflow.keras import backend as K
+            K.clear_session()
+        except Exception:
+            pass
+
+    print(f'[LOAD] Loading {name}...', flush=True)
+    _loaded_model = tf.keras.models.load_model(f'models/{name}.keras')
+
+    # Warmup
     try:
         dummy = tf.zeros((1, *IMG_SIZE, 3), dtype=tf.float32)
-        _ = model(dummy, training=False)
-        return True
+        _ = _loaded_model(dummy, training=False)
     except Exception:
-        return False
+        pass
+
+    _loaded_model_name = name
+    print(f'[LOAD] {name} ready', flush=True)
+    return _loaded_model
 
 
-for _m in models.values():
-    _warmup_model(_m)
-
-
-# ── Grad-CAM Utilities ────────────────────────────────────
+# ---- Grad-CAM Utilities ----
 def _get_last_conv_layer(model):
     """Walk layers recursively to find final Conv2D (handles nested models)."""
+    import tensorflow as tf
+
     def collect(obj):
         out = []
         if not hasattr(obj, 'layers'):
@@ -59,6 +87,7 @@ def _get_last_conv_layer(model):
 
 
 def make_gradcam_heatmap(img_array, model, class_index=None):
+    import tensorflow as tf
     img_tensor = tf.convert_to_tensor(img_array, dtype=tf.float32)
     try:
         _ = model(img_tensor, training=False)
@@ -92,6 +121,7 @@ def make_gradcam_heatmap(img_array, model, class_index=None):
 
 
 def overlay_heatmap_on_image(heatmap, image, alpha=0.4):
+    import matplotlib.cm as cm
     if heatmap is None:
         return None
     heatmap_uint8 = np.uint8(255 * heatmap)
@@ -110,7 +140,7 @@ def _image_to_base64(pil_img):
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 
-# ── Helper: Decode + Preprocess ────────────────────────────
+# ---- Helper: Decode + Preprocess ----
 def decode_image(b64_string):
     raw = base64.b64decode(b64_string)
     img = Image.open(io.BytesIO(raw)).convert('RGB')
@@ -121,7 +151,7 @@ def decode_image(b64_string):
 
 def _run_prediction(model_name, img, img_array):
     """Run single model prediction with Grad-CAM."""
-    model = models[model_name]
+    model = get_model(model_name)
     pred = model.predict(img_array, verbose=0)
     cls_idx = int(np.argmax(pred))
 
@@ -145,10 +175,15 @@ def _run_prediction(model_name, img, img_array):
     }
 
 
-# ── Routes ─────────────────────────────────────────────────
+# ---- Routes ----
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/models_list')
+def models_list():
+    return jsonify({'models': AVAILABLE_MODELS})
 
 
 @app.route('/predict', methods=['POST'])
@@ -156,8 +191,8 @@ def predict():
     data = request.json
     model_name = data.get('model', 'MobileNetV2')
 
-    if model_name not in models:
-        return jsonify({'error': f'Model {model_name} not found'}), 400
+    if model_name not in AVAILABLE_MODELS:
+        return jsonify({'error': f'Model {model_name} not available'}), 400
 
     try:
         img, img_array = decode_image(data['image'])
@@ -177,7 +212,7 @@ def compare():
 
     results = {}
     all_preds = []
-    for name in models:
+    for name in AVAILABLE_MODELS:
         result = _run_prediction(name, img, img_array)
         results[name] = result
         all_preds.append([float(v) for v in result['prob_values']])
@@ -193,9 +228,9 @@ def compare():
     return jsonify({'models': results, 'ensemble': ensemble})
 
 
-# ── Main ───────────────────────────────────────────────────
+# ---- Main ----
 if __name__ == '__main__':
-    print(f'\n  OphthoAI — {len(models)} models loaded')
+    print(f'\n  OphthoAI -- {len(AVAILABLE_MODELS)} models available (lazy loading)')
     print(f'  Classes: {list(class_names)}')
     print(f'  http://localhost:5000\n')
     app.run(debug=True, port=5000)
